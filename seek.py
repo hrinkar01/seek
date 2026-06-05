@@ -1,7 +1,17 @@
 import pandas as pd
+import numpy as np
+from sklearn.model_selection import cross_val_score
+from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
 
 dataset_input = input("Enter the dataset path: ")
 dataset = pd.read_csv(dataset_input)
@@ -50,17 +60,69 @@ def auto_train_model(df, target):
                 print(f"❌ Low Missing ({missing_pct:.2%}) in '{col}': Dropping faulty rows.")
                 X = X.dropna(subset=[col])
                 y = y.loc[X.index] # Keep y perfectly synchronized!
+        
+    #model type detector
+    is_text = y.dtype in ['object', 'category', 'str'] 
+    unique_ratio = y.nunique() / len(y)
+    
+    if is_text or(unique_ratio < 20):
+        problem_type = "classification"
+        metric = "accuracy"
+        models_pool = {
+            "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+            "Random Forest Classifier": RandomForestClassifier(random_state=42),
+            "Gradient Boosting Classifier": HistGradientBoostingClassifier(random_state=42)
+        }
+    else:
+        problem_type = "regression"
+        metric = "r2"
+        models_pool = {
+            "LinearRegression": LinearRegression(),
+            "Random Forest Classifier": RandomForestClassifier(random_state=42),
+            "Gradient Boosting Classifier": HistGradientBoostingClassifier(random_state=42)
             
-            # Condition B: High Missing Data (> 15%) -> Split route imputation
-            else:
-                if X[col].dtype in ['object', 'category', 'str']:
-                    print(f"📝 High Missing ({missing_pct:.2%}) in Text Column '{col}': Filling with 'unknown'")
-                    X[col] = X[col].fillna("unknown")
-                else:
-                    print(f"🛠️ High Missing ({missing_pct:.2%}) in Numeric Column '{col}': Filling with median")
-                    X[col] = X[col].fillna(X[col].median())
-                    
+        }  
+        
+    print(f"\nSeek Intelligence Layer: Detected a [{problem_type}] Problem!")
+    print("=========================================================================")
+    print(f"{'Machine Learning Model':<30} | {'CV Mean Evaluation Score (' + metric + ')':<18}")
+    print("-------------------------------------------------------------------------")  
+              
+    numeric_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    categorical_features = X.select_dtypes(include=['str','object', 'category']).columns.tolist()
+    
+    # Create an empty list to dynamically collect our active transformers
+    active_transformers = []
 
+    # Only build the numerical lane if we ACTUALLY have numeric columns!
+    if len(numeric_features) > 0:
+        numeric_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+        ])
+        active_transformers.append(('num', numeric_transformer, numeric_features))
+        print(f"📦 Pipeline routed numerical features: {numeric_features}")
+
+    # Only build the categorical lane if we ACTUALLY have text columns!
+    if len(categorical_features) > 0:
+        categorical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='constant', fill_value='unknown')),
+            ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+        ])
+        active_transformers.append(('cat', categorical_transformer, categorical_features))
+        print(f"📦 Pipeline routed categorical features: {categorical_features}")
+
+    # Pass ONLY the active lanes to the Traffic Controller
+    preprocessor = ColumnTransformer(transformers=active_transformers)
+    
+    for name, model in models_pool.items():
+        seek_pipeline = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('classifier', model)
+        ])
+    cv_scores = cross_val_score(seek_pipeline, X, y, cv=5, scoring=metric, n_jobs=-1)
+    print(f"🏋️ {name:<28} | {np.mean(cv_scores):<18.2%}")
+    print(f"💡 User Action Required: Judge your results using the {metric.upper()} scores above!")
     return X, y
     
     

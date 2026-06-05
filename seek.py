@@ -17,6 +17,14 @@ dataset_input = input("Enter the dataset path: ")
 dataset = pd.read_csv(dataset_input)
 target_column = input("What you want to predict: ")
 def auto_train_model(df, target):
+    if df[target].isnull().any():
+        missing_count = df[target].isnull().sum()
+        print(f"Target column '{target}' contains {missing_count} missing values.")
+        print(f"Dropping rows where target '{target}' is blank to prevent training failure.")
+        
+        # Keep only the rows where the target answer actually exists
+        df = df[df[target].notnull()].copy()
+        
     y = df[target]
     X = df.drop(columns=[target])
 
@@ -65,7 +73,7 @@ def auto_train_model(df, target):
     is_text = y.dtype in ['object', 'category', 'str'] 
     unique_ratio = y.nunique() / len(y)
     
-    if is_text or(unique_ratio < 20):
+    if is_text or (y.nunique() <= 20):
         problem_type = "classification"
         metric = "accuracy"
         models_pool = {
@@ -77,11 +85,10 @@ def auto_train_model(df, target):
         problem_type = "regression"
         metric = "r2"
         models_pool = {
-            "LinearRegression": LinearRegression(),
-            "Random Forest Classifier": RandomForestClassifier(random_state=42),
-            "Gradient Boosting Classifier": HistGradientBoostingClassifier(random_state=42)
-            
-        }  
+            "Linear Regression": LinearRegression(),
+            "Random Forest Regressor": RandomForestRegressor(random_state=42),
+            "Gradient Boosting Regressor": HistGradientBoostingRegressor(random_state=42)
+        }
         
     print(f"\nSeek Intelligence Layer: Detected a [{problem_type}] Problem!")
     print("=========================================================================")
@@ -101,17 +108,19 @@ def auto_train_model(df, target):
             ('scaler', StandardScaler())
         ])
         active_transformers.append(('num', numeric_transformer, numeric_features))
-        print(f"📦 Pipeline routed numerical features: {numeric_features}")
+        print(f"Pipeline routed numerical features: {numeric_features}")
+        
 
     # Only build the categorical lane if we ACTUALLY have text columns!
-    if len(categorical_features) > 0:
+    elif len(categorical_features) > 0:
         categorical_transformer = Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='constant', fill_value='unknown')),
             ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
         ])
         active_transformers.append(('cat', categorical_transformer, categorical_features))
-        print(f"📦 Pipeline routed categorical features: {categorical_features}")
-
+        print(f"Pipeline routed categorical features: {categorical_features}")
+        
+    print("------------------------------------------------------")
     # Pass ONLY the active lanes to the Traffic Controller
     preprocessor = ColumnTransformer(transformers=active_transformers)
     
@@ -120,12 +129,13 @@ def auto_train_model(df, target):
             ('preprocessor', preprocessor),
             ('classifier', model)
         ])
-    cv_scores = cross_val_score(seek_pipeline, X, y, cv=5, scoring=metric, n_jobs=-1)
-    print(f"🏋️ {name:<28} | {np.mean(cv_scores):<18.2%}")
+        cv_scores = cross_val_score(seek_pipeline, X, y, cv=5, scoring=metric, n_jobs=-1)
+        print(f"🏋️ {name:<28} | {np.mean(cv_scores):<18.2%}")
     return X, y
     
     
 X_clean, y_clean = auto_train_model(dataset, target_column)
+print("------------------------------------------------------")
 print(f"Original Dataset Rows: {len(dataset)}")
 print(f"Final Cleaned Rows: {len(X_clean)}")
 print(f"Total Rows Lost: {len(dataset) - len(X_clean)}")

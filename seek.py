@@ -122,7 +122,6 @@ def auto_train_model(df, target):
         ])
     cv_scores = cross_val_score(seek_pipeline, X, y, cv=5, scoring=metric, n_jobs=-1)
     print(f"🏋️ {name:<28} | {np.mean(cv_scores):<18.2%}")
-    print(f"💡 User Action Required: Judge your results using the {metric.upper()} scores above!")
     return X, y
     
     

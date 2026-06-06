@@ -2,6 +2,10 @@
 
 Seek is an automated machine learning assistant built with Scikit-Learn that helps users quickly train and evaluate machine learning models on tabular datasets with minimal manual preprocessing.
 
+## Usage: 
+
+*streamlit run seek.py
+
 ## Features
 
 ### 📂 Automatic Dataset Loading

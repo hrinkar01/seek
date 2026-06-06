@@ -79,7 +79,7 @@ if uploaded_file is not None:
 
                 st.dataframe(
                     results_df,
-                    width='stretch'
+                    width='stretch'"
                 )
 
             except Exception as e:

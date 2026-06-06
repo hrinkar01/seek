@@ -13,9 +13,9 @@ from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassif
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
 
-dataset_input = input("Enter the dataset path: ")
-dataset = pd.read_csv(dataset_input)
-target_column = input("What you want to predict(Y): ")
+# dataset_input = input("Enter the dataset path: ")
+# dataset = pd.read_csv(dataset_input)
+# target_column = input("What you want to predict(Y): ")
 def auto_train_model(df, target):
     if df[target].isnull().any():
         missing_count = df[target].isnull().sum()
@@ -131,11 +131,51 @@ def auto_train_model(df, target):
         ])
         cv_scores = cross_val_score(seek_pipeline, X, y, cv=5, scoring=metric, n_jobs=-1)
         print(f"{name:<28} | {np.mean(cv_scores):<18.2%}")
-    return X, y
+        
+
+    results = []
+
+    for name, model in models_pool.items():
+
+        seek_pipeline = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('classifier', model)
+        ])
+
+        cv_scores = cross_val_score(
+            seek_pipeline,
+            X,
+            y,
+            cv=5,
+            scoring=metric,
+            n_jobs=-1
+        )
+
+        mean_score = np.mean(cv_scores)
+
+        print(f"{name:<28} | {mean_score:<18.2%}")
+
+        results.append({
+            "Model": name,
+            "Score": mean_score
+        })
+
+    results_df = pd.DataFrame(results)
+
+    results_df = results_df.sort_values(
+        by="Score",
+        ascending=False
+    )
+
+    best_model = results_df.iloc[0]["Model"]
+    best_score = results_df.iloc[0]["Score"]
+
+    return results_df, best_model, best_score
+
     
     
-X_clean, y_clean = auto_train_model(dataset, target_column)
-print("------------------------------------------------------")
-print(f"Original Dataset Rows: {len(dataset)}")
-print(f"Final Cleaned Rows: {len(X_clean)}")
-print(f"Total Rows Lost: {len(dataset) - len(X_clean)}")
+#X_clean, y_clean = auto_train_model(dataset, target_column)
+# print("------------------------------------------------------")
+# print(f"Original Dataset Rows: {len(dataset)}")
+# print(f"Final Cleaned Rows: {len(X_clean)}")
+# print(f"Total Rows Lost: {len(dataset) - len(X_clean)}")

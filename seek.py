@@ -15,7 +15,7 @@ from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegresso
 
 dataset_input = input("Enter the dataset path: ")
 dataset = pd.read_csv(dataset_input)
-target_column = input("What you want to predict: ")
+target_column = input("What you want to predict(Y): ")
 def auto_train_model(df, target):
     if df[target].isnull().any():
         missing_count = df[target].isnull().sum()
@@ -33,12 +33,12 @@ def auto_train_model(df, target):
     
     for col in X.columns:
         
-        #Drop column if it's 100% unique 'numbers' (like PassengerId) ----
+        #Drop column if it's 100% unique 'numbers' (like PassengerId)
         if X[col].dtype in ['int64'] and X[col].nunique() == total_rows:
             print(f"🗑️ Automatically dropping numerical index/ID column: {col}")
             continue
         
-        #Filter high-cardinality metadata strings (IDs, Names etc)
+        #Filter high-cardinality metadata strings (Names etc)
         if X[col].dtype == 'object' or X[col].dtype == 'str' or X[col].dtype == 'category':
             if X[col].nunique() > (total_rows * 0.5):
                 print(f"🗑️ Automatically dropping useless metadata column: {col}")
@@ -90,7 +90,7 @@ def auto_train_model(df, target):
             "Gradient Boosting Regressor": HistGradientBoostingRegressor(random_state=42)
         }
         
-    print(f"\nSeek Intelligence Layer: Detected a [{problem_type}] Problem!")
+    print(f"\nSeek: Detected a [{problem_type}] Problem!")
     print("=========================================================================")
     print(f"{'Machine Learning Model':<30} | {'CV Mean Evaluation Score (' + metric + ')':<18}")
     print("-------------------------------------------------------------------------")  
@@ -112,7 +112,7 @@ def auto_train_model(df, target):
         
 
     # Only build the categorical lane if we ACTUALLY have text columns!
-    elif len(categorical_features) > 0:
+    if len(categorical_features) > 0:
         categorical_transformer = Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='constant', fill_value='unknown')),
             ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
@@ -130,7 +130,7 @@ def auto_train_model(df, target):
             ('classifier', model)
         ])
         cv_scores = cross_val_score(seek_pipeline, X, y, cv=5, scoring=metric, n_jobs=-1)
-        print(f"🏋️ {name:<28} | {np.mean(cv_scores):<18.2%}")
+        print(f"{name:<28} | {np.mean(cv_scores):<18.2%}")
     return X, y
     
     

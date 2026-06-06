@@ -4,7 +4,7 @@ Seek is an automated machine learning assistant built with Scikit-Learn that hel
 
 ## Usage: 
 
-*streamlit run seek.py
+* streamlit run seek.py
 
 ## Features
 
